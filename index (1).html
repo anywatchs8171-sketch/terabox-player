@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🎬 Terabox Instant Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0a; color: #fff;
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      min-height: 100vh; display: flex; flex-direction: column; align-items: center;
+      padding: 20px;
+    }
+    .header { text-align: center; margin: 30px 0 25px; }
+    .header h1 {
+      font-size: 2.2rem;
+      background: linear-gradient(135deg, #4af, #f4a);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 8px;
+    }
+    .header p { color: #888; font-size: 0.95rem; }
+
+    .input-box { width: 100%; max-width: 600px; display: flex; gap: 10px; margin-bottom: 25px; }
+    .input-box input {
+      flex: 1; padding: 14px 18px; border: 2px solid #333; border-radius: 12px;
+      background: #151515; color: #fff; font-size: 1rem; outline: none; transition: 0.3s;
+    }
+    .input-box input:focus { border-color: #4af; }
+    .input-box input::placeholder { color: #555; }
+    .input-box button {
+      padding: 14px 28px; border: none; border-radius: 12px;
+      background: linear-gradient(135deg, #4af, #28f); color: #fff;
+      font-size: 1rem; font-weight: 600; cursor: pointer; transition: 0.3s;
+    }
+    .input-box button:hover { transform: scale(1.05); box-shadow: 0 0 20px rgba(68,170,255,0.3); }
+    .input-box button:active { transform: scale(0.98); }
+    .input-box button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .info-bar {
+      display: none; width: 100%; max-width: 600px; background: #151515;
+      border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; border: 1px solid #333;
+    }
+    .info-bar.active { display: flex; align-items: center; gap: 15px; }
+    .info-bar img { width: 60px; height: 60px; border-radius: 8px; object-fit: cover; background: #222; }
+    .info-bar .meta { flex: 1; }
+    .info-bar .meta h3 { font-size: 1rem; color: #fff; margin-bottom: 4px; word-break: break-all; }
+    .info-bar .meta p { font-size: 0.8rem; color: #888; }
+
+    .video-wrapper {
+      display: none; width: 100%; max-width: 480px; aspect-ratio: 9/16;
+      background: #000; border-radius: 16px; overflow: hidden;
+      box-shadow: 0 0 40px rgba(68,170,255,0.15);
+    }
+    .video-wrapper.active { display: block; }
+    video { width: 100%; height: 100%; display: block; }
+
+    .status {
+      display: none; margin-top: 20px; padding: 12px 24px; border-radius: 10px;
+      font-size: 0.9rem; text-align: center;
+    }
+    .status.active { display: block; }
+    .status.loading { background: #1a2332; color: #4af; }
+    .status.error { background: #321; color: #f55; }
+    .status.success { background: #132; color: #5f5; }
+
+    .spinner {
+      display: inline-block; width: 16px; height: 16px;
+      border: 2px solid #4af; border-top-color: transparent; border-radius: 50%;
+      animation: spin 1s linear infinite; margin-right: 8px; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .links { display: none; flex-direction: column; gap: 8px; width: 100%; max-width: 600px; margin-top: 15px; }
+    .links.active { display: flex; }
+    .link-btn {
+      padding: 10px 15px; background: #151515; border: 1px solid #333; border-radius: 8px;
+      color: #4af; text-decoration: none; font-size: 0.85rem; word-break: break-all;
+      transition: 0.2s; cursor: pointer; text-align: center;
+    }
+    .link-btn:hover { background: #1a1a2e; border-color: #4af; }
+
+    .footer { margin-top: auto; padding: 30px 0 10px; text-align: center; color: #444; font-size: 0.8rem; }
+    .footer a { color: #4af; text-decoration: none; }
+
+    @media (max-width: 500px) {
+      .header h1 { font-size: 1.6rem; }
+      .input-box { flex-direction: column; }
+      .input-box button { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎬 Terabox Instant Player</h1>
+    <p>Paste any Terabox link & watch instantly — no login needed!</p>
+  </div>
+
+  <div class="input-box">
+    <input type="text" id="linkInput" placeholder="Paste Terabox link here..." autocomplete="off">
+    <button id="playBtn" onclick="playVideo()">▶ Play</button>
+  </div>
+
+  <div class="info-bar" id="infoBar">
+    <img id="thumbImg" src="" alt="" style="display:none">
+    <div class="meta">
+      <h3 id="fileName">-</h3>
+      <p id="fileMeta">-</p>
+    </div>
+  </div>
+
+  <div class="video-wrapper" id="videoWrapper">
+    <video id="video" controls playsinline></video>
+  </div>
+
+  <div class="status loading" id="status">
+    <span class="spinner"></span> Fetching stream...
+  </div>
+
+  <div class="links" id="links">
+    <a class="link-btn" id="m3u8Link" href="#" target="_blank">📋 M3U8 Stream Link</a>
+    <a class="link-btn" id="browserLink" href="#" target="_blank">🌐 Play in TeradiskPlayer</a>
+    <a class="link-btn" id="vlcLink" href="#" target="_blank">📥 Open in VLC</a>
+  </div>
+
+  <div class="footer">
+    <p>Deployed on <a href="https://vercel.com" target="_blank">Vercel</a> | Serverless CORS Proxy</p>
+  </div>
+
+  <script>
+    const linkInput = document.getElementById('linkInput');
+    const playBtn = document.getElementById('playBtn');
+    const videoWrapper = document.getElementById('videoWrapper');
+    const video = document.getElementById('video');
+    const status = document.getElementById('status');
+    const infoBar = document.getElementById('infoBar');
+    const fileName = document.getElementById('fileName');
+    const fileMeta = document.getElementById('fileMeta');
+    const thumbImg = document.getElementById('thumbImg');
+    const links = document.getElementById('links');
+    const m3u8Link = document.getElementById('m3u8Link');
+    const browserLink = document.getElementById('browserLink');
+    const vlcLink = document.getElementById('vlcLink');
+
+    let hlsInstance = null;
+
+    linkInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') playVideo(); });
+
+    function showStatus(msg, type) {
+      status.className = 'status active ' + type;
+      status.innerHTML = type === 'loading' ? `<span class="spinner"></span> ${msg}` : msg;
+    }
+    function hideStatus() { status.className = 'status'; }
+    function resetPlayer() {
+      videoWrapper.classList.remove('active');
+      infoBar.classList.remove('active');
+      links.classList.remove('active');
+      if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+      video.src = '';
+      hideStatus();
+    }
+
+    async function playVideo() {
+      const url = linkInput.value.trim();
+      if (!url) { showStatus('Please paste a Terabox link!', 'error'); return; }
+      resetPlayer();
+      playBtn.disabled = true;
+      showStatus('Fetching stream...', 'loading');
+
+      try {
+        // Call our own Vercel API (no CORS issue!)
+        const apiUrl = '/api/stream?url=' + encodeURIComponent(url);
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+
+        if (!data.success || !data.directUrl) {
+          showStatus(data.message || data.error || 'Video not found', 'error');
+          playBtn.disabled = false;
+          return;
+        }
+
+        // Show info
+        fileName.textContent = data.title || 'Unknown Video';
+        fileMeta.textContent = 'Ready to play';
+        if (data.thumb) { thumbImg.src = data.thumb; thumbImg.style.display = 'block'; }
+        else { thumbImg.style.display = 'none'; }
+        infoBar.classList.add('active');
+
+        // Set links
+        m3u8Link.href = data.directUrl;
+        m3u8Link.textContent = '📋 M3U8 Stream Link';
+        browserLink.href = `https://teradiskplayer.com/?url=${encodeURIComponent(url)}`;
+        vlcLink.href = `vlc://${data.directUrl}`;
+        links.classList.add('active');
+
+        showStatus('Loading HLS stream...', 'loading');
+        videoWrapper.classList.add('active');
+
+        // Play with HLS.js
+        if (Hls.isSupported()) {
+          hlsInstance = new Hls({ maxBufferLength: 60, maxMaxBufferLength: 120 });
+          hlsInstance.loadSource(data.directUrl);
+          hlsInstance.attachMedia(video);
+          hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+            showStatus('✅ Ready! Click play to watch', 'success');
+            setTimeout(hideStatus, 2000);
+            video.play().catch(e => console.log('Autoplay blocked:', e));
+          });
+          hlsInstance.on(Hls.Events.ERROR, (e, d) => { if (d.fatal) showStatus('Stream error: ' + d.type, 'error'); });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+          video.src = data.directUrl;
+          video.addEventListener('loadedmetadata', () => {
+            showStatus('✅ Ready!', 'success');
+            setTimeout(hideStatus, 2000);
+            video.play().catch(e => console.log('Autoplay blocked:', e));
+          });
+        } else {
+          showStatus('HLS not supported. Use Chrome/Safari.', 'error');
+        }
+      } catch (err) {
+        console.error(err);
+        showStatus('Error: ' + err.message, 'error');
+      } finally {
+        playBtn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
