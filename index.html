@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Terabox Instant Player</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{background:#0a0a0a;color:#fff;font-family:'Segoe UI',Arial,sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:20px}
+    h1{margin:30px 0;font-size:2rem;background:linear-gradient(135deg,#4af,#f4a);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .input-box{width:100%;max-width:600px;display:flex;gap:10px;margin-bottom:25px}
+    input{flex:1;padding:14px 18px;border:2px solid #333;border-radius:12px;background:#151515;color:#fff;font-size:1rem;outline:none}
+    button{padding:14px 28px;border:none;border-radius:12px;background:linear-gradient(135deg,#4af,#28f);color:#fff;font-size:1rem;font-weight:600;cursor:pointer}
+    button:hover{transform:scale(1.05)}
+    button:disabled{opacity:0.5}
+    .video-wrapper{display:none;width:100%;max-width:480px;aspect-ratio:9/16;background:#000;border-radius:16px;overflow:hidden}
+    .video-wrapper.active{display:block}
+    video{width:100%;height:100%}
+    .status{display:none;margin-top:20px;padding:12px 24px;border-radius:10px}
+    .status.active{display:block}
+    .loading{background:#1a2332;color:#4af}
+    .error{background:#321;color:#f55}
+    .success{background:#132;color:#5f5}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid #4af;border-top-color:transparent;border-radius:50%;animation:spin 1s linear infinite;margin-right:8px}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body>
+  <h1>🎬 Terabox Instant Player</h1>
+  <div class="input-box">
+    <input type="text" id="link" placeholder="Paste Terabox link..." autocomplete="off">
+    <button onclick="play()">▶ Play</button>
+  </div>
+  <div class="status loading" id="status"><span class="spinner"></span>Fetching...</div>
+  <div class="video-wrapper" id="wrapper"><video id="video" controls playsinline></video></div>
+
+  <script>
+    async function play(){
+      const url=document.getElementById('link').value.trim();
+      if(!url){alert('Paste link first!');return;}
+      const s=document.getElementById('status'),w=document.getElementById('wrapper'),v=document.getElementById('video');
+      s.className='status active loading';s.innerHTML='<span class="spinner"></span>Fetching...';w.classList.remove('active');
+      try{
+        const r=await fetch('/api/stream?url='+encodeURIComponent(url));
+        const d=await r.json();
+        if(!d.success||!d.directUrl){s.className='status active error';s.textContent='❌ '+(d.message||'Failed');return;}
+        w.classList.add('active');
+        if(Hls.isSupported()){const h=new Hls();h.loadSource(d.directUrl);h.attachMedia(v);h.on(Hls.Events.MANIFEST_PARSED,()=>{s.className='status active success';s.textContent='✅ Playing!';v.play();});}
+        else{v.src=d.directUrl;v.play();}
+      }catch(e){s.className='status active error';s.textContent='❌ '+e.message;}
+    }
+  </script>
+</body>
+</html>
